@@ -70,13 +70,17 @@ public final class FailoverListenerManager extends AbstractListenerManager {
         LiteJobConfiguration jobConfig = configService.load(true);
         return null != jobConfig && jobConfig.isFailover();
     }
-    
+
+    /**
+     * 节点宕机监听
+     */
     class JobCrashedJobListener extends AbstractJobListener {
         
         @Override
         protected void dataChanged(final String path, final Type eventType, final String data) {
             if (isFailoverEnabled() && Type.NODE_REMOVED == eventType && instanceNode.isInstancePath(path)) {
                 String jobInstanceId = path.substring(instanceNode.getInstanceFullPath().length() + 1);
+                //分区 但节点没挂
                 if (jobInstanceId.equals(JobRegistry.getInstance().getJobInstance(jobName).getJobInstanceId())) {
                     return;
                 }

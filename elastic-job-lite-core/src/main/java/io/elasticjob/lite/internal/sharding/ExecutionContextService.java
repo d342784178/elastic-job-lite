@@ -75,7 +75,9 @@ public final class ExecutionContextService {
         return Joiner.on("@-@").join(liteJobConfig.getJobName(), Joiner.on(",").join(shardingItems), "READY", 
                 null == jobInstance.getJobInstanceId() ? "127.0.0.1@-@1" : jobInstance.getJobInstanceId()); 
     }
-    
+    /**
+     * 移除正在执行的分片项
+     */
     private void removeRunningIfMonitorExecution(final boolean monitorExecution, final List<Integer> shardingItems) {
         if (!monitorExecution) {
             return;

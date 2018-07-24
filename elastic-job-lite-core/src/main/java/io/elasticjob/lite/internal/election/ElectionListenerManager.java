@@ -54,23 +54,36 @@ public final class ElectionListenerManager extends AbstractListenerManager {
     
     @Override
     public void start() {
+        //主节点变动监听(主动/被动)
         addDataListener(new LeaderElectionJobListener());
+        //主节点退位
         addDataListener(new LeaderAbdicationJobListener());
     }
-    
+
+    /**
+     * 主节点为空/主节点remove监听
+     */
     class LeaderElectionJobListener extends AbstractJobListener {
         
         @Override
         protected void dataChanged(final String path, final Type eventType, final String data) {
             if (!JobRegistry.getInstance().isShutdown(jobName) && (isActiveElection(path, data) || isPassiveElection(path, eventType))) {
-                leaderService.electLeader();
+                leaderService.electLeader();//重新分片
             }
         }
-        
+
+        /**
+         * 1.当前没有主节点
+         * 2.本身节点活跃
+         */
         private boolean isActiveElection(final String path, final String data) {
             return !leaderService.hasLeader() && isLocalServerEnabled(path, data);
         }
-        
+
+        /**
+         * 1.主节点removed
+         * 2.自身节点可用
+         */
         private boolean isPassiveElection(final String path, final Type eventType) {
             return isLeaderCrashed(path, eventType) && serverService.isAvailableServer(JobRegistry.getInstance().getJobInstance(jobName).getIp());
         }
@@ -83,11 +96,15 @@ public final class ElectionListenerManager extends AbstractListenerManager {
             return serverNode.isLocalServerPath(path) && !ServerStatus.DISABLED.name().equals(data);
         }
     }
-    
+
+    /**
+     * 主节点退位
+     */
     class LeaderAbdicationJobListener extends AbstractJobListener {
         
         @Override
         protected void dataChanged(final String path, final Type eventType, final String data) {
+            //节点disabled 如果该节点是主节点 则移除主节点
             if (leaderService.isLeader() && isLocalServerDisabled(path, data)) {
                 leaderService.removeLeader();
             }

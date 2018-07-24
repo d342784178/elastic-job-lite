@@ -105,16 +105,25 @@ public final class ShardingService {
             return;
         }
         if (!leaderService.isLeaderUntilBlock()) {
+            //如果不是主节点 则阻塞直到分片完成
             blockUntilShardingCompleted();
             return;
         }
+        //以下都在主节点执行
+        //等待所有节点 当前job执行完成
         waitingOtherShardingItemCompleted();
         LiteJobConfiguration liteJobConfig = configService.load(false);
         int shardingTotalCount = liteJobConfig.getTypeConfig().getCoreConfig().getShardingTotalCount();
         log.debug("Job '{}' sharding begin.", jobName);
+        //标记ShardingNode.PROCESSING
         jobNodeStorage.fillEphemeralJobNode(ShardingNode.PROCESSING, "");
+        //重置所有分片信息
         resetShardingInfo(shardingTotalCount);
+        //分片策略
         JobShardingStrategy jobShardingStrategy = JobShardingStrategyFactory.getStrategy(liteJobConfig.getJobShardingStrategyClass());
+        //开启事务
+        //1.设置分片信息
+        //2.移除ShardingNode.NECESSARY和ShardingNode.PROCESSING标记
         jobNodeStorage.executeInTransaction(new PersistShardingInfoTransactionExecutionCallback(jobShardingStrategy.sharding(availableJobInstances, jobName, shardingTotalCount)));
         log.debug("Job '{}' sharding complete.", jobName);
     }

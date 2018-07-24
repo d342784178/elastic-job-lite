@@ -101,9 +101,11 @@ public abstract class AbstractElasticJobExecutor {
             jobExceptionHandler.handleException(jobName, cause);
         }
         ShardingContexts shardingContexts = jobFacade.getShardingContexts();
+        //任务启动事件
         if (shardingContexts.isAllowSendJobEvent()) {
             jobFacade.postJobStatusTraceEvent(shardingContexts.getTaskId(), State.TASK_STAGING, String.format("Job '%s' execute begin.", jobName));
         }
+        //错过时间不再执行
         if (jobFacade.misfireIfRunning(shardingContexts.getShardingItemParameters().keySet())) {
             if (shardingContexts.isAllowSendJobEvent()) {
                 jobFacade.postJobStatusTraceEvent(shardingContexts.getTaskId(), State.TASK_FINISHED, String.format(
@@ -113,6 +115,7 @@ public abstract class AbstractElasticJobExecutor {
             return;
         }
         try {
+            //前置回调
             jobFacade.beforeJobExecuted(shardingContexts);
             //CHECKSTYLE:OFF
         } catch (final Throwable cause) {
@@ -120,12 +123,15 @@ public abstract class AbstractElasticJobExecutor {
             jobExceptionHandler.handleException(jobName, cause);
         }
         execute(shardingContexts, JobExecutionEvent.ExecutionSource.NORMAL_TRIGGER);
+        //执行misfire
         while (jobFacade.isExecuteMisfired(shardingContexts.getShardingItemParameters().keySet())) {
             jobFacade.clearMisfire(shardingContexts.getShardingItemParameters().keySet());
             execute(shardingContexts, JobExecutionEvent.ExecutionSource.MISFIRE);
         }
+        //执行失效转移
         jobFacade.failoverIfNecessary();
         try {
+            //后置回调
             jobFacade.afterJobExecuted(shardingContexts);
             //CHECKSTYLE:OFF
         } catch (final Throwable cause) {
@@ -141,14 +147,17 @@ public abstract class AbstractElasticJobExecutor {
             }
             return;
         }
+        //标记任务开始执行
         jobFacade.registerJobBegin(shardingContexts);
         String taskId = shardingContexts.getTaskId();
         if (shardingContexts.isAllowSendJobEvent()) {
             jobFacade.postJobStatusTraceEvent(taskId, State.TASK_RUNNING, "");
         }
         try {
+            //执行任务
             process(shardingContexts, executionSource);
         } finally {
+            //标记任务完成
             // TODO 考虑增加作业失败的状态，并且考虑如何处理作业失败的整体回路
             jobFacade.registerJobCompleted(shardingContexts);
             if (itemErrorMessages.isEmpty()) {
@@ -177,6 +186,7 @@ public abstract class AbstractElasticJobExecutor {
             if (executorService.isShutdown()) {
                 return;
             }
+            //线程池执行分片
             executorService.submit(new Runnable() {
                 
                 @Override
@@ -190,6 +200,7 @@ public abstract class AbstractElasticJobExecutor {
             });
         }
         try {
+            //等待所有分片执行完成
             latch.await();
         } catch (final InterruptedException ex) {
             Thread.currentThread().interrupt();
@@ -203,6 +214,7 @@ public abstract class AbstractElasticJobExecutor {
         log.trace("Job '{}' executing, item is: '{}'.", jobName, item);
         JobExecutionEvent completeEvent;
         try {
+            //真正的任务执行
             process(new ShardingContext(shardingContexts, item));
             completeEvent = startEvent.executionSuccess();
             log.trace("Job '{}' executed, item is: '{}'.", jobName, item);
