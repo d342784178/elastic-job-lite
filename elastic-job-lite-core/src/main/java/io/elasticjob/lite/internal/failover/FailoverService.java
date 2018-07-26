@@ -162,7 +162,6 @@ public final class FailoverService {
             if (JobRegistry.getInstance().isShutdown(jobName) || !needFailover()) {
                 return;
             }
-            //TODO 为何不多取几个
             int crashedItem = Integer.parseInt(jobNodeStorage.getJobNodeChildrenKeys(FailoverNode.ITEMS_ROOT).get(0));
             log.debug("Failover job '{}' begin, crashed item '{}'", jobName, crashedItem);
             //写入执行该失效转移分片的节点
@@ -171,6 +170,7 @@ public final class FailoverService {
             jobNodeStorage.removeJobNodeIfExisted(FailoverNode.getItemsNode(crashedItem));
 
             // TODO 不应使用triggerJob, 而是使用executor统一调度
+            //TODO 同一node 触发多次?
             JobScheduleController jobScheduleController = JobRegistry.getInstance().getJobScheduleController(jobName);
             if (null != jobScheduleController) {
                 jobScheduleController.triggerJob();
