@@ -112,6 +112,7 @@ public final class LiteJobFacade implements JobFacade {
                 return executionContextService.getJobShardingContext(failoverShardingItems);
             }
         }
+        //TODO
         shardingService.shardingIfNecessary();
         //获取当前节点分配到的分片项
         List<Integer> shardingItems = shardingService.getLocalShardingItems();

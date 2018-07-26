@@ -17,6 +17,7 @@
 
 package io.elasticjob.lite.internal.failover;
 
+import io.elasticjob.lite.api.JobScheduler;
 import io.elasticjob.lite.internal.schedule.JobRegistry;
 import io.elasticjob.lite.internal.schedule.JobScheduleController;
 import io.elasticjob.lite.internal.sharding.ShardingNode;
@@ -70,6 +71,7 @@ public final class FailoverService {
      * 如果需要失效转移, 则执行作业失效转移.
      */
     public void failoverIfNecessary() {
+        //是否开启失效转移
         if (needFailover()) {
             jobNodeStorage.executeInLeader(FailoverNode.LATCH, new FailoverLeaderExecutionCallback());
         }
@@ -147,7 +149,12 @@ public final class FailoverService {
             jobNodeStorage.removeJobNodeIfExisted(FailoverNode.getExecutionFailoverNode(Integer.parseInt(each)));
         }
     }
-    
+
+    /**
+     *  使用triggerJob直接开始任务
+     * 注意一个节点可能会多次触发 但不会并行执行 因为quartz的线程数为1
+     * @see JobScheduler#getBaseQuartzProperties()
+     */
     class FailoverLeaderExecutionCallback implements LeaderExecutionCallback {
         
         @Override
@@ -155,10 +162,14 @@ public final class FailoverService {
             if (JobRegistry.getInstance().isShutdown(jobName) || !needFailover()) {
                 return;
             }
+            //TODO 为何不多取几个
             int crashedItem = Integer.parseInt(jobNodeStorage.getJobNodeChildrenKeys(FailoverNode.ITEMS_ROOT).get(0));
             log.debug("Failover job '{}' begin, crashed item '{}'", jobName, crashedItem);
+            //写入执行该失效转移分片的节点
             jobNodeStorage.fillEphemeralJobNode(FailoverNode.getExecutionFailoverNode(crashedItem), JobRegistry.getInstance().getJobInstance(jobName).getJobInstanceId());
+            //移除该失效转移分片
             jobNodeStorage.removeJobNodeIfExisted(FailoverNode.getItemsNode(crashedItem));
+
             // TODO 不应使用triggerJob, 而是使用executor统一调度
             JobScheduleController jobScheduleController = JobRegistry.getInstance().getJobScheduleController(jobName);
             if (null != jobScheduleController) {

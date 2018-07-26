@@ -17,9 +17,11 @@
 
 package io.elasticjob.lite.internal.election;
 
+import com.sun.xml.internal.bind.v2.TODO;
 import io.elasticjob.lite.internal.listener.AbstractJobListener;
 import io.elasticjob.lite.internal.listener.AbstractListenerManager;
 import io.elasticjob.lite.internal.schedule.JobRegistry;
+import io.elasticjob.lite.internal.schedule.SchedulerFacade;
 import io.elasticjob.lite.internal.server.ServerNode;
 import io.elasticjob.lite.internal.server.ServerService;
 import io.elasticjob.lite.internal.server.ServerStatus;
@@ -75,6 +77,8 @@ public final class ElectionListenerManager extends AbstractListenerManager {
         /**
          * 1.当前没有主节点
          * 2.本身节点活跃
+         * TODO 作业启动时不是已经尝试获取主节点了吗
+         * @see SchedulerFacade#registerStartUpInfo(boolean)
          */
         private boolean isActiveElection(final String path, final String data) {
             return !leaderService.hasLeader() && isLocalServerEnabled(path, data);
@@ -91,7 +95,10 @@ public final class ElectionListenerManager extends AbstractListenerManager {
         private boolean isLeaderCrashed(final String path, final Type eventType) {
             return leaderNode.isLeaderInstancePath(path) && Type.NODE_REMOVED == eventType;
         }
-        
+
+        /**
+         * /{job}/server/{instanceId} 变化
+         */
         private boolean isLocalServerEnabled(final String path, final String data) {
             return serverNode.isLocalServerPath(path) && !ServerStatus.DISABLED.name().equals(data);
         }

@@ -69,9 +69,10 @@ public final class ShardingListenerManager extends AbstractListenerManager {
         protected void dataChanged(final String path, final Type eventType, final String data) {
             if (configNode.isConfigPath(path) && 0 != JobRegistry.getInstance().getCurrentShardingTotalCount(jobName)) {
                 int newShardingTotalCount = LiteJobConfigurationGsonFactory.fromJson(data).getTypeConfig().getCoreConfig().getShardingTotalCount();
-                //总分片数变化 标记重新分片
+                //总分片数变化 标记重新分片 等到任务下次运行时重新分片
                 if (newShardingTotalCount != JobRegistry.getInstance().getCurrentShardingTotalCount(jobName)) {
                     shardingService.setReshardingFlag();
+                    //更新本地分片数map
                     JobRegistry.getInstance().setCurrentShardingTotalCount(jobName, newShardingTotalCount);
                 }
             }

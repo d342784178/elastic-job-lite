@@ -84,10 +84,13 @@ public final class FailoverListenerManager extends AbstractListenerManager {
                 if (jobInstanceId.equals(JobRegistry.getInstance().getJobInstance(jobName).getJobInstanceId())) {
                     return;
                 }
+                //获取该节点没执行完的分片
                 List<Integer> failoverItems = failoverService.getFailoverItems(jobInstanceId);
                 if (!failoverItems.isEmpty()) {
                     for (int each : failoverItems) {
+                        //写入需要进行失效转移的分片项
                         failoverService.setCrashedFailoverFlag(each);
+                        //执行失效转移
                         failoverService.failoverIfNecessary();
                     }
                 } else {

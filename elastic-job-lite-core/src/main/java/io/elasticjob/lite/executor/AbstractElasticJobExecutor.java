@@ -128,7 +128,7 @@ public abstract class AbstractElasticJobExecutor {
             jobFacade.clearMisfire(shardingContexts.getShardingItemParameters().keySet());
             execute(shardingContexts, JobExecutionEvent.ExecutionSource.MISFIRE);
         }
-        //执行失效转移
+        //主动抓取失效转移未分配的分片
         jobFacade.failoverIfNecessary();
         try {
             //后置回调

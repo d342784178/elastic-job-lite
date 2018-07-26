@@ -51,6 +51,7 @@ public final class LeaderService {
      */
     public void electLeader() {
         log.debug("Elect a new leader now.");
+        //使用分布式锁,以cas方式选举主节点
         jobNodeStorage.executeInLeader(LeaderNode.LATCH, new LeaderElectionExecutionCallback());
         log.debug("Leader election completed.");
     }

@@ -59,19 +59,20 @@ public abstract class AbstractDistributeOnceElasticJobListener implements Elasti
     @Override
     public final void beforeJobExecuted(final ShardingContexts shardingContexts) {
         guaranteeService.registerStart(shardingContexts.getShardingItemParameters().keySet());
-        if (guaranteeService.isAllStarted()) {
+        if (guaranteeService.isAllStarted()) {//所有分片准备开始
             doBeforeJobExecutedAtLastStarted(shardingContexts);
             guaranteeService.clearAllStartedInfo();
             return;
         }
         long before = timeService.getCurrentMillis();
-        try {
+        try {//阻塞 等待唤醒
             synchronized (startedWait) {
                 startedWait.wait(startedTimeoutMilliseconds);
             }
         } catch (final InterruptedException ex) {
             Thread.interrupted();
         }
+        //等待超时
         if (timeService.getCurrentMillis() - before >= startedTimeoutMilliseconds) {
             guaranteeService.clearAllStartedInfo();
             handleTimeout(startedTimeoutMilliseconds);
